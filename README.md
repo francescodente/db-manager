@@ -9,10 +9,10 @@ This tool should only be used for local development.
 
 * ```db update <db-name>```: Update an existing database configuration.
 
-* ```db remove <db-name>```: Remove an existing database configuration.
+* ```db rm <db-name>```: Remove an existing database configuration.
 
 * ```db start <db-name>```: Start a database with given configuration.
 
 * ```db stop <db-name>```: Stop a database.
 
-* ```db list```: List all available databases.
+* ```db ls```: List all available databases.
