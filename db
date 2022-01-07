@@ -122,10 +122,10 @@ if [[ $# == 0 ]] ; then
   >&2 echo "Commands:"
   >&2 echo "  create <DB_NAME>"
   >&2 echo "  update <DB_NAME>"
-  >&2 echo "  remove <DB_NAME>"
+  >&2 echo "  rm <DB_NAME>"
   >&2 echo "  start <DB_NAME>"
   >&2 echo "  stop <DB_NAME>"
-  >&2 echo "  list"
+  >&2 echo "  ls"
   exit 1
 fi
 
