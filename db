@@ -100,7 +100,7 @@ function remove {
   fi
 
   DB_NAME=$1
-  VOLUME="${DB_NAME}_volume"
+  VOLUME="${DB_NAME}_sqlvolume"
   DATA_FILE_NAME="$DB_DEFS/$DB_NAME"
 
   if [[ ! -f "$DATA_FILE_NAME" ]] ; then
