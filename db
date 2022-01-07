@@ -1,0 +1,149 @@
+#!/bin/sh
+
+function start {
+  if [[ $# != 1 ]] ; then
+    >&2 echo "Usage: db start <DB_NAME>"
+    exit 1
+  fi
+
+  DB_NAME=$1
+  CONTAINER_NAME="${DB_NAME}_sql"
+  VOLUME="${DB_NAME}_sqlvolume"
+  DATA_FILE_NAME="$DB_DEFS/$DB_NAME"
+  IMAGE_NAME="mcr.microsoft.com/mssql/server:2019-CU3-ubuntu-18.04"
+
+  if [[ ! -f "$DATA_FILE_NAME" ]] ; then
+    >&2 echo "Unknown DB '$DB_NAME'"
+    exit 1
+  fi
+
+  IFS=$'\t' read -r PORT PASSWORD < "$DATA_FILE_NAME"
+  
+  echo "Starting DB container with name '$CONTAINER_NAME'"
+  docker run -d --rm \
+    -p "$PORT:1433" \
+    -e "ACCEPT_EULA=Y" \
+    -e "MSSQL_PID=Developer" \
+    -e "SA_PASSWORD=$PASSWORD" \
+    -v "$VOLUME:/var/opt/mssql" \
+    --name "$CONTAINER_NAME" \
+    "$IMAGE_NAME"
+}
+
+function stop {
+  if [[ $# != 1 ]] ; then
+    >&2 echo "Usage: db stop <DB_NAME>"
+    exit 1
+  fi
+
+  DB_NAME=$1
+  CONTAINER_NAME="${DB_NAME}_sql"
+
+  echo "Stopping DB container with name '$CONTAINER_NAME'"
+  docker stop "$CONTAINER_NAME"
+}
+
+function create {
+  if [[ $# != 1 ]] ; then
+    >&2 echo "Usage: db create <DB_NAME>"
+    exit 1
+  fi
+
+  DB_NAME=$1
+  DATA_FILE_NAME="$DB_DEFS/$DB_NAME"
+  read -p "Port: " PORT
+  read -p "Password: " PASSWORD
+
+  echo "Creating DB '$DB_NAME' with port '$PORT' and password '$PASSWORD'"
+  echo -e "$PORT\t$PASSWORD" > "$DATA_FILE_NAME"
+}
+
+function update {
+  if [[ $# != 1 ]] ; then
+    >&2 echo "Usage: db update <DB_NAME>"
+    exit 1
+  fi
+
+  DB_NAME=$1
+  DATA_FILE_NAME="$DB_DEFS/$DB_NAME"
+
+  if [[ ! -f "$DATA_FILE_NAME" ]] ; then
+    >&2 echo "Unknown DB '$DB_NAME'"
+    exit 1
+  fi
+
+  IFS=$'\t' read -r OLD_PORT OLD_PASSWORD < "$DATA_FILE_NAME"
+
+  echo "Leave options empty to keep the current value"
+  read -p "Port: " PORT
+  read -p "Password: " PASSWORD
+
+  PORT=${PORT:-$OLD_PORT}
+  PASSWORD=${PASSWORD:-$OLD_PASSWORD}
+
+  echo -e "$PORT\t$PASSWORD" > "$DATA_FILE_NAME"
+}
+
+function list {
+  echo -e "DATABASE\tPORT\tPASSWORD"
+  for FILE in "$DB_DEFS"/* ; do
+    IFS=$'\t' read -r PORT PASSWORD < "$FILE"
+    DB_NAME=`basename "$FILE"`
+    echo -e "$DB_NAME\t$PORT\t$PASSWORD"
+  done
+}
+
+function remove {
+  if [[ $# != 1 ]] ; then
+    >&2 echo "Usage: db remove <DB_NAME>"
+    exit 1
+  fi
+
+  DB_NAME=$1
+  VOLUME="${DB_NAME}_volume"
+  DATA_FILE_NAME="$DB_DEFS/$DB_NAME"
+
+  if [[ ! -f "$DATA_FILE_NAME" ]] ; then
+    >&2 echo "Unknown DB '$DB_NAME'"
+    exit 1
+  fi
+
+  echo "Removing DB data file '$DATA_FILE_NAME'"
+  rm "$DATA_FILE_NAME"
+  echo "Removing volume '$VOLUME'"
+  docker volume rm "$VOLUME"
+}
+
+RUNNING_DIR=`dirname "$0"`
+DB_DEFS="$RUNNING_DIR/db_defs"
+
+if [[ $# == 0 ]] ; then
+  >&2 echo "Usage: db <command> [<options>]"
+  >&2 echo "Commands:"
+  >&2 echo "  create <DB_NAME>"
+  >&2 echo "  update <DB_NAME>"
+  >&2 echo "  remove <DB_NAME>"
+  >&2 echo "  start <DB_NAME>"
+  >&2 echo "  stop <DB_NAME>"
+  >&2 echo "  list"
+  exit 1
+fi
+
+COMMAND=$1
+
+if [[ "$COMMAND" == "start" ]] ; then
+  start "${@:2}"
+elif [[ "$COMMAND" == "stop" ]] ; then
+  stop "${@:2}"
+elif [[ "$COMMAND" == "create" ]] ; then
+  create "${@:2}"
+elif [[ "$COMMAND" == "update" ]] ; then
+  update "${@:2}"
+elif [[ "$COMMAND" == "ls" ]] ; then
+  list "${@:2}"
+elif [[ "$COMMAND" == "rm" ]] ; then
+  remove "${@:2}"
+else
+  >&2 echo "Unknown command '$COMMAND'"
+  exit 1
+fi
